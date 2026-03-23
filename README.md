@@ -2,6 +2,8 @@
 
 `osp-release` is a small Go CLI for looking up OpenShift Pipelines release data from Confluence, Jira, and upstream GitHub releases.
 
+<img width="3335" height="1071" alt="image" src="https://github.com/user-attachments/assets/6e7f0a7e-732d-4ccc-9368-b906857109f0" />
+
 ## Install
 
 ```bash
