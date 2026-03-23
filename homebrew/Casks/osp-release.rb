@@ -3,7 +3,7 @@ cask "osp-release" do
   name "osp-release"
   desc "Query OpenShift Pipelines release data from Confluence, Jira, and GitHub"
   homepage "https://github.com/openshift-pipelines/osp-release"
-  version "0.1.0"
+  version "0.2.0"
 
   livecheck do
     skip "Auto-generated on release."
@@ -15,12 +15,12 @@ cask "osp-release" do
     on_intel do
       url "https://github.com/openshift-pipelines/osp-release/releases/download/v#{version}/osp-release_#{version}_darwin_amd64.tar.gz",
         verified: "github.com/openshift-pipelines/osp-release/"
-      sha256 "07ddf1ad1b134b8dd94d904da6ea3174ecf65d47c36f37e87e1dde5ce25d2124"
+      sha256 "330b5696a7b45419d56e2258f60fbd0ba49eed8cea39daaf9aa0bdc05561121a"
     end
     on_arm do
       url "https://github.com/openshift-pipelines/osp-release/releases/download/v#{version}/osp-release_#{version}_darwin_arm64.tar.gz",
         verified: "github.com/openshift-pipelines/osp-release/"
-      sha256 "59f73fd52c4f111578d617bd317b421d7021a69b49b1dd47e51670ee9b82b09e"
+      sha256 "0a287380997f7a1097ae0d852022a044ab2d5bedae9da1571de0beabeb2b1972"
     end
   end
 
@@ -28,12 +28,12 @@ cask "osp-release" do
     on_intel do
       url "https://github.com/openshift-pipelines/osp-release/releases/download/v#{version}/osp-release_#{version}_linux_amd64.tar.gz",
         verified: "github.com/openshift-pipelines/osp-release/"
-      sha256 "c10de3b71177b4bd899bfe2845b9519c1412868a051af449296e7e7b8b7ee211"
+      sha256 "abd15668874bf90a3654841607ef8a3c807022e38cf45bdea4c84709042116ce"
     end
     on_arm do
       url "https://github.com/openshift-pipelines/osp-release/releases/download/v#{version}/osp-release_#{version}_linux_arm64.tar.gz",
         verified: "github.com/openshift-pipelines/osp-release/"
-      sha256 "c0a0b255933cedd5c58d9c7ad1639060dff3cd5bf6f3c513ac703008d93e8e44"
+      sha256 "a69935c0e9b18263acb45fcf6820b89ec8d4a4ee68b26675b6609f5aba2757fe"
     end
   end
 
