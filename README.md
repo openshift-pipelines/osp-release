@@ -45,7 +45,64 @@ osp-release release latest --jira-email 'pass::jira/email' --jira-token 'pass::j
 
 `upstream` commands use normal GitHub CLI auth conventions through the official `go-gh` library.
 
-The component catalog lives in `internal/release/components.yaml` and is embedded into the binary at build time. Edit that file if you need to adjust component names, display labels, or repo mappings.
+## Component Catalog
+
+The component catalog lives in `internal/release/components.yaml` and is embedded into the binary at build time.
+
+### What is components.yaml?
+
+This file defines the complete component catalog for OpenShift Pipelines releases. It maps component identifiers (keys) to display names and upstream GitHub repositories. When you run commands like `osp-release component list` or fetch release versions, this file provides the source of truth for which components exist and where their releases are tracked.
+
+### File Structure
+
+```yaml
+display_names:
+  # Keys used in output headers and field selectors
+  minor: OSP Minor              # Release minor version (e.g., "1.21")
+  version: OSP Version          # Full release version (e.g., "1.21.0")
+  released: Released            # Release date
+  component: Component          # Component name column header
+  value: Version                # Component version column header
+  repo: Repository              # Repository URL column header
+  name: Component               # Alternative component name header
+  minimum_k8s_version: Minimum Kubernetes  # Min K8s version requirement
+
+components:
+  - key: pac                    # Component identifier (used in CLI)
+    display_name: Pipelines as Code  # Human-readable name
+    repo: tektoncd/pipelines-as-code  # GitHub owner/repo for version lookups
+  # ... more components
+```
+
+### How to Edit
+
+To **add a component**:
+
+1. Add a new entry under `components:` with a unique `key` (lowercase, no spaces)
+2. Set `display_name` to the human-readable name
+3. Set `repo` to the GitHub `owner/repo` path where releases are tracked
+
+Example:
+
+```yaml
+  - key: mycomponent
+    display_name: My Component Name
+    repo: owner/repository
+```
+
+To **modify display labels**, edit the `display_names` section at the top. These keys control output headers and are used by `--field` selectors.
+
+To **rename a component**, update the `key` and update any documentation or scripts that reference it. The key is part of the CLI interface.
+
+### Rebuild After Edits
+
+After editing `internal/release/components.yaml`, rebuild the binary:
+
+```bash
+make build
+```
+
+The file is embedded at build time, so changes don't take effect until the binary is rebuilt.
 
 ## Commands
 
