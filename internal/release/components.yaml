@@ -1,0 +1,35 @@
+display_names:
+  minor: OSP Minor
+  version: OSP Version
+  released: Released
+  component: Component
+  value: Version
+  repo: Repository
+  name: Component
+  minimum_k8s_version: Minimum Kubernetes
+
+components:
+  - key: pac
+    display_name: Pipelines as Code
+    repo: tektoncd/pipelines-as-code
+  - key: pipelines
+    display_name: Tekton Pipelines
+    repo: tektoncd/pipeline
+  - key: tkn
+    display_name: tkn CLI
+    repo: tektoncd/cli
+  - key: triggers
+    display_name: Tekton Triggers
+    repo: tektoncd/triggers
+  - key: chains
+    display_name: Tekton Chains
+    repo: tektoncd/chains
+  - key: results
+    display_name: Tekton Results
+    repo: tektoncd/results
+  - key: hub
+    display_name: Tekton Hub
+    repo: tektoncd/hub
+  - key: opc
+    display_name: OpenShift Pipelines Operator
+    repo: openshift-pipelines/opc

@@ -1,0 +1,68 @@
+version: 2
+
+project_name: osp-release
+
+builds:
+  - id: osp-release
+    main: ./cmd/osp-release
+    binary: osp-release
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: osp-release
+    formats: [tar.gz]
+    files:
+      - README.md
+      - LICENSE
+
+homebrew_casks:
+  - name: osp-release
+    ids:
+      - osp-release
+    binaries:
+      - osp-release
+    repository:
+      owner: openshift-pipelines
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    commit_msg_template: "Brew cask update for {{ .ProjectName }} version {{ .Tag }}"
+    directory: Casks
+    homepage: https://github.com/openshift-pipelines/osp-release
+    description: Query OpenShift Pipelines release data from Confluence, Jira, and GitHub
+    caveats: |-
+      If macOS blocks the binary after install, run:
+        xattr -dr com.apple.quarantine "$(which osp-release)"
+    url:
+      verified: github.com/openshift-pipelines/osp-release/
+
+nfpms:
+  - id: osp-release
+    ids:
+      - osp-release
+    package_name: osp-release
+    file_name_template: "{{ .ConventionalFileName }}"
+    vendor: OpenShift Pipelines
+    homepage: https://github.com/openshift-pipelines/osp-release
+    maintainer: Chmouel Boudjnah <chmouel@chmouel.com>
+    description: |-
+      Query OpenShift Pipelines release data from Confluence, Jira, and GitHub.
+    license: Apache 2.0
+    formats:
+      - deb
+      - rpm
+      - apk
+    bindir: /usr/bin
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  use: github
