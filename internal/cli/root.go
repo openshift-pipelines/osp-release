@@ -110,6 +110,9 @@ func newRootCommand(ctx context.Context, application application) *cobra.Command
 	root.PersistentFlags().BoolVar(&opts.quiet, "quiet", false, "Print only the selected field value")
 	root.PersistentFlags().BoolVar(&opts.noHeaders, "no-headers", false, "Hide table headers")
 	root.PersistentFlags().StringSliceVar(&opts.fields, "field", nil, "Field to output; repeat to select multiple fields")
+	_ = root.RegisterFlagCompletionFunc("output", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		return []string{"table", "text", "json"}, cobra.ShellCompDirectiveNoFileComp
+	})
 
 	releaseCmd := &cobra.Command{
 		Use:   "release",
@@ -226,6 +229,9 @@ func newRootCommand(ctx context.Context, application application) *cobra.Command
 			Args:  cobra.ExactArgs(1),
 			Example: "  osp-release release show 1.21\n" +
 				"  osp-release release show 1.21 --no-components",
+			ValidArgsFunction: func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			},
 			RunE: func(cmd *cobra.Command, args []string) error {
 				records, err := application.loadReleaseRecords(cmd.Context(), opts)
 				if err != nil {
@@ -265,6 +271,12 @@ func newRootCommand(ctx context.Context, application application) *cobra.Command
 			Example: "  osp-release component show pac\n" +
 				"  osp-release component show pac --json\n" +
 				"  osp-release component show pac --field latest_upstream --quiet",
+			ValidArgsFunction: func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+				if len(args) != 0 {
+					return nil, cobra.ShellCompDirectiveNoFileComp
+				}
+				return release.UpstreamComponentNames(), cobra.ShellCompDirectiveNoFileComp
+			},
 			RunE: func(cmd *cobra.Command, args []string) error {
 				return application.renderComponentDetail(cmd.Context(), opts, args[0])
 			},
@@ -295,6 +307,12 @@ func newRootCommand(ctx context.Context, application application) *cobra.Command
 			Args:  cobra.ExactArgs(1),
 			Example: "  osp-release upstream show pac\n" +
 				"  osp-release upstream show pac --field version --quiet",
+			ValidArgsFunction: func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+				if len(args) != 0 {
+					return nil, cobra.ShellCompDirectiveNoFileComp
+				}
+				return release.UpstreamComponentNames(), cobra.ShellCompDirectiveNoFileComp
+			},
 			RunE: func(cmd *cobra.Command, args []string) error {
 				record, err := application.upstreamClient.LatestRelease(cmd.Context(), args[0])
 				if err != nil {
