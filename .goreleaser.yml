@@ -30,11 +30,11 @@ homebrew_casks:
       - osp-release
     repository:
       owner: openshift-pipelines
-      name: homebrew-tap
+      name: osp-release
       branch: main
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+      token: "{{ .Env.GITHUB_TOKEN }}"
     commit_msg_template: "Brew cask update for {{ .ProjectName }} version {{ .Tag }}"
-    directory: Casks
+    directory: homebrew/Casks
     homepage: https://github.com/openshift-pipelines/osp-release
     description: Query OpenShift Pipelines release data from Confluence, Jira, and GitHub
     caveats: |-

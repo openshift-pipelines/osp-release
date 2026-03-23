@@ -13,7 +13,8 @@ go install github.com/openshift-pipelines/osp-release/cmd/osp-release@latest
 Homebrew:
 
 ```bash
-brew install --cask openshift-pipelines/tap/osp-release
+brew tap openshift-pipelines/osp-release https://github.com/openshift-pipelines/osp-release
+brew install --cask osp-release
 ```
 
 Linux packages are published on GitHub Releases as `.deb`, `.rpm`, and `.apk` artifacts.
@@ -95,4 +96,4 @@ make release-snapshot
 
 CI runs tests, lint, and `goreleaser check`. Tags publish release archives, Homebrew casks, and Linux packages with GoReleaser.
 
-For Homebrew publishing, the release workflow expects a `HOMEBREW_TAP_GITHUB_TOKEN` secret with write access to the tap repository.
+The Homebrew cask is published directly to `homebrew/Casks/` in this repository using the workflow's `GITHUB_TOKEN`.
