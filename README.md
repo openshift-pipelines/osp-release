@@ -117,6 +117,18 @@ osp-release upstream list
 osp-release upstream show pac --field version --quiet
 ```
 
+## Caching
+
+`release` and `component` commands cache Jira/Confluence data for 7 days under
+`$XDG_CACHE_HOME/osp-release/` (macOS: `~/Library/Caches/osp-release/`).
+
+To bypass the cache and fetch live data:
+
+```bash
+osp-release release list --refresh
+osp-release component show pac --refresh
+```
+
 ## Output
 
 - Default on TTY: table

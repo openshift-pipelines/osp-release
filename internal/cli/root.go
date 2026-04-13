@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"golang.org/x/term"
 
 	"github.com/openshift-pipelines/osp-release/internal/app"
+	"github.com/openshift-pipelines/osp-release/internal/cache"
 	"github.com/openshift-pipelines/osp-release/internal/confluence"
 	"github.com/openshift-pipelines/osp-release/internal/credentials"
 	"github.com/openshift-pipelines/osp-release/internal/jira"
@@ -41,6 +43,7 @@ type rootOptions struct {
 	jiraEmail    string
 	jiraToken    string
 	debug        bool
+	refresh      bool
 }
 
 type application struct {
@@ -51,6 +54,7 @@ type application struct {
 	siteURL        string
 	pageID         int
 	projectKey     string
+	cacheDir       string // if non-empty, overrides cache.DefaultPath() directory
 }
 
 func Run(ctx context.Context, stdout, stderr io.Writer, isTTY bool) int {
@@ -129,6 +133,7 @@ func newRootCommand(ctx context.Context, application application) *cobra.Command
 	releaseCmd.PersistentFlags().BoolVar(&opts.components, "components", true, "Include component versions in release output")
 	releaseCmd.PersistentFlags().BoolVar(&opts.noComponents, "no-components", false, "Hide component versions in release output")
 	releaseCmd.PersistentFlags().BoolVar(&opts.unreleased, "unreleased", false, "Include unreleased versions in release listings")
+	releaseCmd.PersistentFlags().BoolVar(&opts.refresh, "refresh", false, "Bypass cache and fetch live Jira/Confluence data")
 
 	componentCmd := &cobra.Command{
 		Use:   "component",
@@ -139,6 +144,7 @@ func newRootCommand(ctx context.Context, application application) *cobra.Command
 	componentCmd.PersistentFlags().StringVar(&opts.jiraEmail, "jira-email", "", "Jira email or pass::entry")
 	componentCmd.PersistentFlags().StringVar(&opts.jiraToken, "jira-token", "", "Jira token or pass::entry")
 	componentCmd.PersistentFlags().BoolVar(&opts.debug, "debug", false, "Print debug messages to stderr")
+	componentCmd.PersistentFlags().BoolVar(&opts.refresh, "refresh", false, "Bypass cache and fetch live Jira/Confluence data")
 
 	upstreamCmd := &cobra.Command{
 		Use:   "upstream",
@@ -253,7 +259,7 @@ func newRootCommand(ctx context.Context, application application) *cobra.Command
 			Example: "  osp-release component list\n" +
 				"  osp-release component list --quiet --field name",
 			RunE: func(cmd *cobra.Command, args []string) error {
-				table, err := application.loadTable(cmd.Context(), opts)
+				table, _, err := application.loadCachedData(cmd.Context(), opts)
 				if err != nil {
 					return err
 				}
@@ -329,18 +335,9 @@ func newRootCommand(ctx context.Context, application application) *cobra.Command
 }
 
 func (a application) loadReleaseRecords(ctx context.Context, opts *rootOptions) ([]release.ReleaseRecord, error) {
-	table, err := a.loadTable(ctx, opts)
+	table, resolved, err := a.loadCachedData(ctx, opts)
 	if err != nil {
 		return nil, err
-	}
-	resolver, err := a.loadResolver(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-
-	resolved := make(map[string]string, len(table.Rows))
-	for _, row := range table.Rows {
-		resolved[row.Minor] = resolver.Resolve(row.Minor)
 	}
 	records := release.BuildRecords(table, resolved)
 	if opts.noComponents || !opts.components {
@@ -352,6 +349,49 @@ func (a application) loadReleaseRecords(ctx context.Context, opts *rootOptions) 
 		}
 	}
 	return records, nil
+}
+
+// loadCachedData returns the Confluence table and Jira-resolved version map.
+// It reads from the on-disk cache when it is fresh and opts.refresh is false;
+// otherwise it fetches live data and writes the result to the cache.
+func (a application) loadCachedData(ctx context.Context, opts *rootOptions) (release.Table, map[string]string, error) {
+	cachePath, pathErr := a.resolveCachePath()
+	if pathErr == nil && !opts.refresh {
+		if p, fresh, err := cache.Load(cachePath); err == nil && fresh {
+			return p.Table, p.Resolved, nil
+		}
+		// corrupt file or expired — fall through to live fetch
+	}
+
+	table, err := a.loadTable(ctx, opts)
+	if err != nil {
+		return release.Table{}, nil, err
+	}
+	resolver, err := a.loadResolver(ctx, opts)
+	if err != nil {
+		return release.Table{}, nil, err
+	}
+	resolved := make(map[string]string, len(table.Rows))
+	for _, row := range table.Rows {
+		resolved[row.Minor] = resolver.Resolve(row.Minor)
+	}
+
+	// Only write cache on full success.
+	if pathErr == nil {
+		_ = cache.Save(cachePath, cache.Payload{
+			FetchedAt: time.Now(),
+			Table:     table,
+			Resolved:  resolved,
+		})
+	}
+	return table, resolved, nil
+}
+
+func (a application) resolveCachePath() (string, error) {
+	if a.cacheDir != "" {
+		return filepath.Join(a.cacheDir, "release-data.json"), nil
+	}
+	return cache.DefaultPath()
 }
 
 func (a application) loadTable(ctx context.Context, opts *rootOptions) (release.Table, error) {
