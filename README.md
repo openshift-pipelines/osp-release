@@ -173,11 +173,12 @@ osp-release version --json
 cache behaviour, and the exit code and error kind tables below. It prints JSON
 even on a terminal; pass `--output table` for a human-readable summary.
 
-An agent skill for this CLI ships
-to [./claude/skills/osp-release](.claude/skills/osp-release) so claude can pick
-it up. Copyying the skill to your local `~/.claude/skills/` folder makes it
-available to your local Claude instance or other agents that support the skill
-format.
+An agent skill for this CLI ships in
+[`.claude/skills/osp-release`](.claude/skills/osp-release) so Claude can pick it
+up. Homebrew installs the skill at
+`~/.claude/skills/osp-release/SKILL.md`; otherwise, copy the directory to your
+local `~/.claude/skills/` folder to make it available to Claude or other agents
+that support the skill format.
 
 ### Output contract
 

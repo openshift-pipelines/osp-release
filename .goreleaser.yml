@@ -26,6 +26,7 @@ archives:
     files:
       - README.md
       - LICENSE
+      - .claude/skills/osp-release/SKILL.md
 
 homebrew_casks:
   - name: osp-release
@@ -45,6 +46,9 @@ homebrew_casks:
     caveats: |-
       If macOS blocks the binary after install, run:
         xattr -dr com.apple.quarantine "$(which osp-release)"
+    custom_block: |-
+      artifact ".claude/skills/osp-release/SKILL.md",
+        target: "#{Dir.home}/.claude/skills/osp-release/SKILL.md"
     url:
       verified: github.com/openshift-pipelines/osp-release/
 
