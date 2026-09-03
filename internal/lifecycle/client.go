@@ -54,7 +54,7 @@ func (c Client) FetchSupport(ctx context.Context, debug io.Writer) ([]release.Su
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL, nil)
 	if err != nil {
-		return nil, app.New("request_build_failed", "failed to build life cycle request", app.ExitGeneral, nil, err)
+		return nil, app.New(app.KindRequestBuildFailed, "failed to build life cycle request", app.ExitGeneral, nil, err)
 	}
 	query := req.URL.Query()
 	query.Set("name", release.LifecycleProduct)
@@ -63,7 +63,7 @@ func (c Client) FetchSupport(ctx context.Context, debug io.Writer) ([]release.Su
 
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
-		return nil, app.New("lifecycle_request_failed", "failed to fetch product life cycle data", app.ExitUpstream, nil, err)
+		return nil, app.New(app.KindLifecycleRequestFailed, "failed to fetch product life cycle data", app.ExitUpstream, nil, err)
 	}
 	defer func() {
 		_ = resp.Body.Close()
@@ -71,7 +71,7 @@ func (c Client) FetchSupport(ctx context.Context, debug io.Writer) ([]release.Su
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, app.New(
-			"lifecycle_request_failed",
+			app.KindLifecycleRequestFailed,
 			fmt.Sprintf("product life cycle request failed with status %d", resp.StatusCode),
 			app.ExitUpstream,
 			map[string]any{"status": resp.StatusCode},
@@ -81,7 +81,7 @@ func (c Client) FetchSupport(ctx context.Context, debug io.Writer) ([]release.Su
 
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, app.New("lifecycle_request_failed", "failed to read product life cycle response", app.ExitUpstream, nil, err)
+		return nil, app.New(app.KindLifecycleRequestFailed, "failed to read product life cycle response", app.ExitUpstream, nil, err)
 	}
 	return ParseSupport(raw)
 }
@@ -91,13 +91,13 @@ func (c Client) FetchSupport(ctx context.Context, debug io.Writer) ([]release.Su
 func ParseSupport(raw []byte) ([]release.SupportRecord, error) {
 	var payload productsResponse
 	if err := json.Unmarshal(raw, &payload); err != nil {
-		return nil, app.New("lifecycle_decode_failed", "failed to decode product life cycle response", app.ExitGeneral, nil, err)
+		return nil, app.New(app.KindLifecycleDecodeFailed, "failed to decode product life cycle response", app.ExitGeneral, nil, err)
 	}
 
 	product, ok := findProduct(payload.Data)
 	if !ok {
 		return nil, app.New(
-			"lifecycle_product_not_found",
+			app.KindLifecycleProductMissing,
 			fmt.Sprintf("product %q not found in life cycle response", release.LifecycleProduct),
 			app.ExitUpstream,
 			map[string]any{"product": release.LifecycleProduct},

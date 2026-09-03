@@ -8,6 +8,11 @@ builds:
     binary: osp-release
     env:
       - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+      - -X github.com/openshift-pipelines/osp-release/internal/version.Version={{.Version}}
+      - -X github.com/openshift-pipelines/osp-release/internal/version.Commit={{.FullCommit}}
+      - -X github.com/openshift-pipelines/osp-release/internal/version.Date={{.Date}}
     goos:
       - linux
       - darwin

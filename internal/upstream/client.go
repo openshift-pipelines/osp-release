@@ -43,7 +43,7 @@ func NewClient() (*Client, error) {
 		CacheTTL:    6 * time.Hour,
 	})
 	if err != nil {
-		return nil, app.New("github_client_failed", "failed to initialize GitHub client", app.ExitDependency, nil, err)
+		return nil, app.New(app.KindGitHubClientFailed, "failed to initialize GitHub client", app.ExitDependency, nil, err)
 	}
 	return &Client{restClient: client, cache: map[string]string{}}, nil
 }
@@ -56,7 +56,7 @@ func (c *Client) LatestRelease(ctx context.Context, component string) (release.U
 	repo, ok := release.UpstreamRepo(component)
 	if !ok {
 		return release.UpstreamRecord{}, app.New(
-			"unknown_component",
+			app.KindUnknownComponent,
 			fmt.Sprintf("unknown component %q", component),
 			app.ExitNotFound,
 			map[string]any{"component": component},
@@ -69,14 +69,14 @@ func (c *Client) LatestRelease(ctx context.Context, component string) (release.U
 	if err := c.restClient.Get(path, &payload); err != nil {
 		message := strings.TrimSpace(err.Error())
 		exitCode := app.ExitUpstream
-		kind := "github_request_failed"
+		kind := app.KindGitHubRequestFailed
 		if strings.Contains(strings.ToLower(message), "404") {
 			exitCode = app.ExitNotFound
-			kind = "release_not_found"
+			kind = app.KindReleaseNotFound
 		}
 		if strings.Contains(strings.ToLower(message), "401") || strings.Contains(strings.ToLower(message), "403") {
 			exitCode = app.ExitAuth
-			kind = "github_auth_failed"
+			kind = app.KindGitHubAuthFailed
 		}
 		return release.UpstreamRecord{}, app.New(
 			kind,

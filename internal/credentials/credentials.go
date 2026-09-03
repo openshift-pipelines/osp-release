@@ -53,7 +53,7 @@ func (r Resolver) Resolve(ctx context.Context, envEmail, envToken, flagEmail, fl
 
 	if resolvedEmail == "" || resolvedToken == "" {
 		return Credentials{}, app.New(
-			"missing_credentials",
+			app.KindMissingCredentials,
 			"missing Jira credentials; set OSP_JIRA_EMAIL and OSP_JIRA_TOKEN or pass --jira-email/--jira-token",
 			app.ExitAuth,
 			nil,
@@ -79,7 +79,7 @@ func (r Resolver) resolveValue(ctx context.Context, value, label string) (string
 	entry := strings.TrimSpace(strings.TrimPrefix(value, passPrefix))
 	if entry == "" {
 		return "", app.New(
-			"invalid_pass_reference",
+			app.KindInvalidPassReference,
 			fmt.Sprintf("%s pass reference is empty", label),
 			app.ExitUsage,
 			map[string]any{"field": label},
@@ -90,7 +90,7 @@ func (r Resolver) resolveValue(ctx context.Context, value, label string) (string
 	output, err := r.run(ctx, "pass", "show", entry)
 	if err != nil {
 		return "", app.New(
-			"pass_lookup_failed",
+			app.KindPassLookupFailed,
 			fmt.Sprintf("failed to resolve %s from pass entry %q", label, entry),
 			app.ExitDependency,
 			map[string]any{"field": label, "entry": entry},

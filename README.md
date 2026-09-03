@@ -120,6 +120,8 @@ osp-release upstream show pac --field version --quiet
 osp-release support list
 osp-release support list --all
 osp-release support show 1.21
+osp-release describe
+osp-release version
 ```
 
 ## Support Status
@@ -152,6 +154,63 @@ osp-release support show 1.21 --field eol_date --quiet
 `release` commands show `support_status` alongside the release data. The date
 fields are available there too via `--field`. If the life cycle API is
 unreachable, `release` commands still work and leave the support fields empty.
+
+## Agent Usage
+
+The CLI describes itself, so agents and scripts never have to scrape `--help`.
+
+```bash
+osp-release describe                        # full schema
+osp-release describe commands               # every command path
+osp-release describe commands release show  # one command
+osp-release describe fields                 # commands that accept --field
+osp-release describe fields release show    # allowed and default field names
+osp-release version --json
+```
+
+`describe` reports command paths, positional arguments, flags, the exact
+`--field` names each command accepts, which environment variables it needs,
+cache behaviour, and the exit code and error kind tables below. It prints JSON
+even on a terminal; pass `--output table` for a human-readable summary.
+
+An agent skill for this CLI ships
+to [./claude/skills/osp-release](.claude/skills/osp-release) so claude can pick
+it up. Copyying the skill to your local `~/.claude/skills/` folder makes it
+available to your local Claude instance or other agents that support the skill
+format.
+
+### Output contract
+
+- Request `--json` explicitly; JSON is also the default whenever stdout is not
+  a terminal.
+- Use `--field` for stable keys and `--quiet` with a single `--field` for bare
+  values.
+- Table output is for humans. Column layout is not a contract and is coloured
+  on a terminal, so do not parse it.
+
+### Exit codes
+
+| Code | Name | Meaning |
+|---|---|---|
+| 0 | `success` | Command completed |
+| 1 | `general` | Unexpected failure |
+| 2 | `usage` | Invalid flag, field, or argument |
+| 3 | `not_found` | The release, component, or command does not exist |
+| 4 | `auth` | Missing or rejected credentials |
+| 5 | `dependency` | A required external tool failed |
+| 6 | `upstream` | An upstream service returned an error |
+
+### Errors
+
+The human-readable message goes to stderr. When JSON output is requested, a
+payload goes to stdout:
+
+```json
+{"error": "release_not_found", "message": "release \"9.99\" not found", "minor": "9.99"}
+```
+
+Match on `error` and on the exit code, never on message text. The full list of
+error kinds is in `osp-release describe`.
 
 ## Caching
 

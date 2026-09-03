@@ -24,6 +24,7 @@ import (
 	"github.com/openshift-pipelines/osp-release/internal/output"
 	"github.com/openshift-pipelines/osp-release/internal/release"
 	"github.com/openshift-pipelines/osp-release/internal/upstream"
+	"github.com/openshift-pipelines/osp-release/internal/version"
 )
 
 type streams struct {
@@ -184,7 +185,7 @@ func newRootCommand(ctx context.Context, application application) *cobra.Command
 				}
 				record, ok := release.LatestReleased(records)
 				if !ok {
-					return app.New("release_not_found", "no released versions found", app.ExitNotFound, nil, nil)
+					return app.New(app.KindReleaseNotFound, "no released versions found", app.ExitNotFound, nil, nil)
 				}
 				return application.renderRecord(cmd.Context(), opts, []map[string]any{record.ToMap()}, true, release.AllowedReleaseFields(), release.DefaultReleaseFields())
 			},
@@ -201,7 +202,7 @@ func newRootCommand(ctx context.Context, application application) *cobra.Command
 				}
 				record, ok := release.LatestUnreleased(records)
 				if !ok {
-					return app.New("release_not_found", "no unreleased versions found", app.ExitNotFound, nil, nil)
+					return app.New(app.KindReleaseNotFound, "no unreleased versions found", app.ExitNotFound, nil, nil)
 				}
 				return application.renderRecord(cmd.Context(), opts, []map[string]any{record.ToMap()}, true, release.AllowedReleaseFields(), release.DefaultReleaseFields())
 			},
@@ -262,7 +263,7 @@ func newRootCommand(ctx context.Context, application application) *cobra.Command
 				}
 				record, ok := release.FindByMinor(records, args[0])
 				if !ok {
-					return app.New("release_not_found", fmt.Sprintf("release %q not found", args[0]), app.ExitNotFound, map[string]any{"minor": args[0]}, nil)
+					return app.New(app.KindReleaseNotFound, fmt.Sprintf("release %q not found", args[0]), app.ExitNotFound, map[string]any{"minor": args[0]}, nil)
 				}
 				return application.renderRecord(cmd.Context(), opts, []map[string]any{record.ToMap()}, true, release.AllowedReleaseFields(), release.DefaultReleaseFields())
 			},
@@ -390,14 +391,26 @@ func newRootCommand(ctx context.Context, application application) *cobra.Command
 				}
 				record, ok := release.FindSupportByMinor(records, args[0])
 				if !ok {
-					return app.New("support_not_found", fmt.Sprintf("no support data for release %q", args[0]), app.ExitNotFound, map[string]any{"minor": args[0]}, nil)
+					return app.New(app.KindSupportNotFound, fmt.Sprintf("no support data for release %q", args[0]), app.ExitNotFound, map[string]any{"minor": args[0]}, nil)
 				}
 				return application.renderRecord(cmd.Context(), opts, []map[string]any{record.ToMap()}, true, release.AllowedSupportFields(), release.DefaultSupportFields())
 			},
 		},
 	)
 
-	root.AddCommand(releaseCmd, componentCmd, upstreamCmd, supportCmd)
+	versionCmd := &cobra.Command{
+		Use:   "version",
+		Short: "Show build information for this binary",
+		Example: "  osp-release version\n" +
+			"  osp-release version --json\n" +
+			"  osp-release version --field version --quiet",
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return application.renderRecord(cmd.Context(), opts, []map[string]any{version.Get().ToMap()}, true, version.Fields(), version.Fields())
+		},
+	}
+
+	root.AddCommand(releaseCmd, componentCmd, upstreamCmd, supportCmd, versionCmd, newDescribeCommand(application, opts))
 	_ = ctx
 	return root
 }
@@ -590,7 +603,7 @@ func (a application) renderComponentDetail(ctx context.Context, opts *rootOption
 	component = strings.ToLower(strings.TrimSpace(component))
 	repo, ok := release.UpstreamRepo(component)
 	if !ok {
-		return app.New("unknown_component", fmt.Sprintf("unknown component %q", component), app.ExitNotFound, map[string]any{"component": component}, nil)
+		return app.New(app.KindUnknownComponent, fmt.Sprintf("unknown component %q", component), app.ExitNotFound, map[string]any{"component": component}, nil)
 	}
 
 	records, err := a.loadReleaseRecords(ctx, opts)
@@ -709,7 +722,7 @@ func renderError(stderr, stdout io.Writer, useJSON bool, err error) {
 	_, _ = fmt.Fprintln(stderr, "Error:", err)
 	if useJSON {
 		_ = json.NewEncoder(stdout).Encode(map[string]any{
-			"error":   "general_failure",
+			"error":   app.KindGeneralFailure,
 			"message": err.Error(),
 		})
 	}

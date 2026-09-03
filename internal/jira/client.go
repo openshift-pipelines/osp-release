@@ -36,25 +36,25 @@ func (c Client) FetchResolver(ctx context.Context, creds credentials.Credentials
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return Resolver{}, app.New("request_build_failed", "failed to build Jira request", app.ExitGeneral, nil, err)
+		return Resolver{}, app.New(app.KindRequestBuildFailed, "failed to build Jira request", app.ExitGeneral, nil, err)
 	}
 	req.SetBasicAuth(creds.Email, creds.Token)
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
-		return Resolver{}, app.New("jira_request_failed", "failed to fetch Jira versions", app.ExitUpstream, nil, err)
+		return Resolver{}, app.New(app.KindJiraRequestFailed, "failed to fetch Jira versions", app.ExitUpstream, nil, err)
 	}
 	defer func() {
 		_ = resp.Body.Close()
 	}()
 
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		return Resolver{}, app.New("jira_auth_failed", "Jira authentication failed", app.ExitAuth, nil, nil)
+		return Resolver{}, app.New(app.KindJiraAuthFailed, "Jira authentication failed", app.ExitAuth, nil, nil)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return Resolver{}, app.New(
-			"jira_request_failed",
+			app.KindJiraRequestFailed,
 			fmt.Sprintf("Jira request failed with status %d", resp.StatusCode),
 			app.ExitUpstream,
 			map[string]any{"status": resp.StatusCode},
@@ -64,7 +64,7 @@ func (c Client) FetchResolver(ctx context.Context, creds credentials.Credentials
 
 	var payload []Version
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		return Resolver{}, app.New("jira_decode_failed", "failed to decode Jira versions response", app.ExitGeneral, nil, err)
+		return Resolver{}, app.New(app.KindJiraDecodeFailed, "failed to decode Jira versions response", app.ExitGeneral, nil, err)
 	}
 
 	versions := make([]string, 0, len(payload))

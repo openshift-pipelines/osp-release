@@ -50,7 +50,7 @@ func SelectFormat(requested string, wantJSON bool, isTTY bool) (Format, error) {
 		return Format(strings.ToLower(strings.TrimSpace(requested))), nil
 	default:
 		return "", app.New(
-			"invalid_output_format",
+			app.KindInvalidOutputFormat,
 			fmt.Sprintf("invalid output format %q", requested),
 			app.ExitUsage,
 			map[string]any{"format": requested},
@@ -62,7 +62,7 @@ func SelectFormat(requested string, wantJSON bool, isTTY bool) (Format, error) {
 func (r Renderer) Render(data Dataset, format Format, fields []string, quiet bool, noHeaders bool) error {
 	if quiet {
 		if len(fields) != 1 {
-			return app.New("invalid_quiet_usage", "--quiet requires exactly one --field", app.ExitUsage, nil, nil)
+			return app.New(app.KindInvalidQuietUsage, "--quiet requires exactly one --field", app.ExitUsage, nil, nil)
 		}
 		return r.renderQuiet(data.Rows, fields[0])
 	}
@@ -75,7 +75,7 @@ func (r Renderer) Render(data Dataset, format Format, fields []string, quiet boo
 	case FormatTable:
 		return r.renderTable(data, fields, noHeaders)
 	default:
-		return app.New("invalid_output_format", "unsupported output format", app.ExitUsage, nil, nil)
+		return app.New(app.KindInvalidOutputFormat, "unsupported output format", app.ExitUsage, nil, nil)
 	}
 }
 
@@ -151,7 +151,7 @@ func (r Renderer) renderQuiet(rows []map[string]any, field string) error {
 	for _, row := range rows {
 		value, ok := row[field]
 		if !ok {
-			return app.New("invalid_field", fmt.Sprintf("unknown field %q", field), app.ExitUsage, map[string]any{"field": field}, nil)
+			return app.New(app.KindInvalidField, fmt.Sprintf("unknown field %q", field), app.ExitUsage, map[string]any{"field": field}, nil)
 		}
 		if _, err := fmt.Fprintln(r.Stdout, stringify(value)); err != nil {
 			return err
@@ -185,7 +185,7 @@ func selectedFields(data Dataset, requested []string, requireSelection bool) ([]
 	}
 	for _, field := range requested {
 		if !slices.Contains(data.AllowedFields, field) {
-			return nil, app.New("invalid_field", fmt.Sprintf("unknown field %q", field), app.ExitUsage, map[string]any{"field": field}, nil)
+			return nil, app.New(app.KindInvalidField, fmt.Sprintf("unknown field %q", field), app.ExitUsage, map[string]any{"field": field}, nil)
 		}
 	}
 	return requested, nil

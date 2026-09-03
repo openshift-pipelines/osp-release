@@ -37,25 +37,25 @@ func (c Client) FetchTable(ctx context.Context, creds credentials.Credentials, d
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return release.Table{}, app.New("request_build_failed", "failed to build Confluence request", app.ExitGeneral, nil, err)
+		return release.Table{}, app.New(app.KindRequestBuildFailed, "failed to build Confluence request", app.ExitGeneral, nil, err)
 	}
 	req.SetBasicAuth(creds.Email, creds.Token)
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
-		return release.Table{}, app.New("confluence_request_failed", "failed to fetch Confluence release table", app.ExitUpstream, nil, err)
+		return release.Table{}, app.New(app.KindConfluenceRequestFailed, "failed to fetch Confluence release table", app.ExitUpstream, nil, err)
 	}
 	defer func() {
 		_ = resp.Body.Close()
 	}()
 
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		return release.Table{}, app.New("confluence_auth_failed", "Confluence authentication failed", app.ExitAuth, nil, nil)
+		return release.Table{}, app.New(app.KindConfluenceAuthFailed, "Confluence authentication failed", app.ExitAuth, nil, nil)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return release.Table{}, app.New(
-			"confluence_request_failed",
+			app.KindConfluenceRequestFailed,
 			fmt.Sprintf("Confluence request failed with status %d", resp.StatusCode),
 			app.ExitUpstream,
 			map[string]any{"status": resp.StatusCode},
@@ -65,7 +65,7 @@ func (c Client) FetchTable(ctx context.Context, creds credentials.Credentials, d
 
 	var payload pageResponse
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		return release.Table{}, app.New("confluence_decode_failed", "failed to decode Confluence response", app.ExitGeneral, nil, err)
+		return release.Table{}, app.New(app.KindConfluenceDecodeFailed, "failed to decode Confluence response", app.ExitGeneral, nil, err)
 	}
 
 	return ParseTable(payload.Body.Storage.Value)
@@ -74,22 +74,22 @@ func (c Client) FetchTable(ctx context.Context, creds credentials.Credentials, d
 func ParseTable(pageHTML string) (release.Table, error) {
 	doc, err := html.Parse(strings.NewReader(pageHTML))
 	if err != nil {
-		return release.Table{}, app.New("html_parse_failed", "failed to parse Confluence HTML", app.ExitGeneral, nil, err)
+		return release.Table{}, app.New(app.KindHTMLParseFailed, "failed to parse Confluence HTML", app.ExitGeneral, nil, err)
 	}
 
 	tableNode := firstElement(doc, "table")
 	if tableNode == nil {
-		return release.Table{}, app.New("table_not_found", "no release table found in Confluence page", app.ExitGeneral, nil, nil)
+		return release.Table{}, app.New(app.KindTableNotFound, "no release table found in Confluence page", app.ExitGeneral, nil, nil)
 	}
 
 	rowNodes := collectElements(tableNode, "tr")
 	if len(rowNodes) == 0 {
-		return release.Table{}, app.New("rows_not_found", "no rows found in Confluence table", app.ExitGeneral, nil, nil)
+		return release.Table{}, app.New(app.KindRowsNotFound, "no rows found in Confluence table", app.ExitGeneral, nil, nil)
 	}
 
 	headers := elementTexts(rowNodes[0], "th")
 	if len(headers) == 0 {
-		return release.Table{}, app.New("headers_not_found", "no headers found in Confluence table", app.ExitGeneral, nil, nil)
+		return release.Table{}, app.New(app.KindHeadersNotFound, "no headers found in Confluence table", app.ExitGeneral, nil, nil)
 	}
 
 	normalizedHeaders := make([]string, 0, len(headers))
