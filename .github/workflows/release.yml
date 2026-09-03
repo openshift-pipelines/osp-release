@@ -40,5 +40,6 @@ jobs:
           git add homebrew/Casks/osp-release.rb
           if ! git diff --cached --quiet; then
             git commit -m "Brew cask update for osp-release version v${version}"
+            git config --unset-all http.https://github.com/.extraheader
             git push "https://x-access-token:${GH_TOKEN}@github.com/openshift-pipelines/osp-release.git" HEAD:main
           fi
