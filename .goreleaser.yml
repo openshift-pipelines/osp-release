@@ -37,12 +37,8 @@ homebrew_casks:
     repository:
       owner: openshift-pipelines
       name: osp-release
-      branch: "release-{{ .Version }}"
-      token: "{{ .Env.GITHUB_TOKEN }}"
-      pull_request:
-        enabled: true
-        base:
-          branch: main
+      branch: main
+    skip_upload: true
     commit_msg_template: "Brew cask update for {{ .ProjectName }} version {{ .Tag }}"
     directory: homebrew/Casks
     homepage: https://github.com/openshift-pipelines/osp-release

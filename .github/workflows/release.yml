@@ -27,9 +27,18 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Merge homebrew cask pull request
+      - name: Publish homebrew cask
         env:
           GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
         run: |
           version="${GITHUB_REF_NAME#v}"
-          gh pr merge "release-${version}" --repo openshift-pipelines/osp-release --squash --admin --delete-branch
+          cask="$(find dist -type f -name osp-release.rb)"
+          mkdir -p homebrew/Casks
+          cp "$cask" homebrew/Casks/osp-release.rb
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add homebrew/Casks/osp-release.rb
+          if ! git diff --cached --quiet; then
+            git commit -m "Brew cask update for osp-release version v${version}"
+            git push "https://x-access-token:${GH_TOKEN}@github.com/openshift-pipelines/osp-release.git" HEAD:main
+          fi
