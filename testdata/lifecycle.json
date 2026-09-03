@@ -1,0 +1,82 @@
+{
+  "data": [
+    {
+      "name": "Red Hat OpenShift Something Else",
+      "versions": [
+        {
+          "name": "1.21",
+          "type": "Full Support",
+          "phases": []
+        }
+      ]
+    },
+    {
+      "name": "Red Hat OpenShift Pipelines",
+      "versions": [
+        {
+          "name": "1.20",
+          "type": "End of life",
+          "phases": [
+            {
+              "name": "General availability",
+              "start_date": "N/A",
+              "end_date": "2025-09-25T00:00:00.000Z"
+            },
+            {
+              "name": "Full support",
+              "start_date": "2025-09-25T00:00:00.000Z",
+              "end_date": "2026-02-22T00:00:00.000Z"
+            },
+            {
+              "name": "Maintenance support",
+              "start_date": "2026-02-23T00:00:00.000Z",
+              "end_date": "2026-04-27T00:00:00.000Z"
+            }
+          ]
+        },
+        {
+          "name": "1.22",
+          "type": "Maintenance Support",
+          "phases": [
+            {
+              "name": "General availability",
+              "start_date": "N/A",
+              "end_date": "N/A"
+            },
+            {
+              "name": "Maintenance support",
+              "start_date": "2026-09-01T00:00:00.000Z",
+              "end_date": "2026-09-30T00:00:00.000Z"
+            }
+          ]
+        },
+        {
+          "name": "1.21",
+          "type": "Full Support",
+          "phases": [
+            {
+              "name": "General availability",
+              "start_date": "N/A",
+              "end_date": "2026-01-22T00:00:00.000Z"
+            },
+            {
+              "name": "Full support",
+              "start_date": "2026-01-22T00:00:00.000Z",
+              "end_date": "2026-05-27T00:00:00.000Z"
+            },
+            {
+              "name": "Maintenance support",
+              "start_date": "2026-05-28T00:00:00.000Z",
+              "end_date": "2026-07-17T00:00:00.000Z"
+            }
+          ]
+        },
+        {
+          "name": "not-a-version",
+          "type": "Full Support",
+          "phases": []
+        }
+      ]
+    }
+  ]
+}

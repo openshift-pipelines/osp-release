@@ -20,6 +20,7 @@ import (
 	"github.com/openshift-pipelines/osp-release/internal/confluence"
 	"github.com/openshift-pipelines/osp-release/internal/credentials"
 	"github.com/openshift-pipelines/osp-release/internal/jira"
+	"github.com/openshift-pipelines/osp-release/internal/lifecycle"
 	"github.com/openshift-pipelines/osp-release/internal/output"
 	"github.com/openshift-pipelines/osp-release/internal/release"
 	"github.com/openshift-pipelines/osp-release/internal/upstream"
@@ -39,6 +40,7 @@ type rootOptions struct {
 	components   bool
 	noComponents bool
 	unreleased   bool
+	all          bool
 	fields       []string
 	jiraEmail    string
 	jiraToken    string
@@ -54,6 +56,7 @@ type application struct {
 	siteURL        string
 	pageID         int
 	projectKey     string
+	lifecycleURL   string
 	cacheDir       string // if non-empty, overrides cache.DefaultPath() directory
 }
 
@@ -79,6 +82,7 @@ func Run(ctx context.Context, stdout, stderr io.Writer, isTTY bool) int {
 		siteURL:        release.Site,
 		pageID:         release.PageID,
 		projectKey:     release.ProjectKey,
+		lifecycleURL:   release.LifecycleURL,
 	}
 	command := newRootCommand(ctx, application)
 	command.SetErr(stderr)
@@ -152,6 +156,19 @@ func newRootCommand(ctx context.Context, application application) *cobra.Command
 		Example: "  osp-release upstream list\n" +
 			"  osp-release upstream show pac --json",
 	}
+
+	supportCmd := &cobra.Command{
+		Use:   "support",
+		Short: "Query Red Hat product life cycle data for OSP versions",
+		Long: "Query Red Hat product life cycle data for OpenShift Pipelines versions.\n" +
+			"This data is public and needs no Jira credentials.",
+		Example: "  osp-release support list\n" +
+			"  osp-release support list --all\n" +
+			"  osp-release support show 1.21\n" +
+			"  osp-release support show 1.21 --field eol_date --quiet",
+	}
+	supportCmd.PersistentFlags().BoolVar(&opts.debug, "debug", false, "Print debug messages to stderr")
+	supportCmd.PersistentFlags().BoolVar(&opts.refresh, "refresh", false, "Bypass cache and fetch live life cycle data")
 
 	releaseCmd.AddCommand(
 		&cobra.Command{
@@ -329,7 +346,58 @@ func newRootCommand(ctx context.Context, application application) *cobra.Command
 		},
 	)
 
-	root.AddCommand(releaseCmd, componentCmd, upstreamCmd)
+	supportListCmd := &cobra.Command{
+		Use:   "list",
+		Short: "List support status for currently supported OSP versions",
+		Long: "List the support status of OpenShift Pipelines versions.\n" +
+			"End-of-life versions are hidden unless --all is passed.",
+		Example: "  osp-release support list\n" +
+			"  osp-release support list --all\n" +
+			"  osp-release support list --json\n" +
+			"  osp-release support list --field minor --field eol_date --output text",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			records, err := application.loadSupport(cmd.Context(), opts)
+			if err != nil {
+				return err
+			}
+			if !opts.all {
+				records = release.FilterSupported(records)
+			}
+			rows := make([]map[string]any, 0, len(records))
+			for _, record := range records {
+				rows = append(rows, record.ToMap())
+			}
+			return application.renderRecord(cmd.Context(), opts, rows, false, release.AllowedSupportFields(), release.DefaultSupportFields())
+		},
+	}
+	supportListCmd.Flags().BoolVar(&opts.all, "all", false, "Include end-of-life versions")
+
+	supportCmd.AddCommand(
+		supportListCmd,
+		&cobra.Command{
+			Use:   "show <minor>",
+			Short: "Show support status for one OSP version",
+			Args:  cobra.ExactArgs(1),
+			Example: "  osp-release support show 1.21\n" +
+				"  osp-release support show 1.21 --field eol_date --quiet",
+			ValidArgsFunction: func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			},
+			RunE: func(cmd *cobra.Command, args []string) error {
+				records, err := application.loadSupport(cmd.Context(), opts)
+				if err != nil {
+					return err
+				}
+				record, ok := release.FindSupportByMinor(records, args[0])
+				if !ok {
+					return app.New("support_not_found", fmt.Sprintf("no support data for release %q", args[0]), app.ExitNotFound, map[string]any{"minor": args[0]}, nil)
+				}
+				return application.renderRecord(cmd.Context(), opts, []map[string]any{record.ToMap()}, true, release.AllowedSupportFields(), release.DefaultSupportFields())
+			},
+		},
+	)
+
+	root.AddCommand(releaseCmd, componentCmd, upstreamCmd, supportCmd)
 	_ = ctx
 	return root
 }
@@ -340,6 +408,14 @@ func (a application) loadReleaseRecords(ctx context.Context, opts *rootOptions) 
 		return nil, err
 	}
 	records := release.BuildRecords(table, resolved)
+
+	support, supportErr := a.loadSupport(ctx, opts)
+	if supportErr != nil {
+		_, _ = fmt.Fprintln(a.streams.err, "Warning: could not fetch support data:", supportErr)
+	} else {
+		release.AttachSupport(records, support)
+	}
+
 	if opts.noComponents || !opts.components {
 		return records, nil
 	}
@@ -349,6 +425,40 @@ func (a application) loadReleaseRecords(ctx context.Context, opts *rootOptions) 
 		}
 	}
 	return records, nil
+}
+
+// loadSupport returns Red Hat product life cycle data. It prefers fresh cached
+// data, then a live fetch, and finally falls back to stale cached data so the
+// CLI keeps working when the life cycle API is unreachable.
+func (a application) loadSupport(ctx context.Context, opts *rootOptions) ([]release.SupportRecord, error) {
+	cachePath, pathErr := a.resolveCachePath()
+
+	var stale []release.SupportRecord
+	if pathErr == nil {
+		if p, err := cache.LoadStale(cachePath); err == nil {
+			stale = p.Support
+			if !opts.refresh && p.SupportFresh() && len(p.Support) > 0 {
+				return p.Support, nil
+			}
+		}
+	}
+
+	client := lifecycle.Client{
+		HTTPClient: a.httpClient,
+		BaseURL:    a.lifecycleURL,
+	}
+	support, err := client.FetchSupport(ctx, a.debugWriter(opts))
+	if err != nil {
+		if len(stale) > 0 {
+			return stale, nil
+		}
+		return nil, err
+	}
+
+	if pathErr == nil {
+		_ = cache.SaveSupport(cachePath, support)
+	}
+	return support, nil
 }
 
 // loadCachedData returns the Confluence table and Jira-resolved version map.
@@ -378,11 +488,7 @@ func (a application) loadCachedData(ctx context.Context, opts *rootOptions) (rel
 
 	// Only write cache on full success.
 	if pathErr == nil {
-		_ = cache.Save(cachePath, cache.Payload{
-			FetchedAt: time.Now(),
-			Table:     table,
-			Resolved:  resolved,
-		})
+		_ = cache.SaveRelease(cachePath, table, resolved)
 	}
 	return table, resolved, nil
 }
@@ -458,7 +564,7 @@ func (a application) renderRecord(ctx context.Context, opts *rootOptions, rows [
 				DefaultFields: []string{"component", "value"},
 			}, format, nil, false, opts.noHeaders)
 		}
-		defaultFields = append([]string(nil), allowedFields...)
+		defaultFields = release.ReleaseFieldsWithComponents()
 	}
 	renderer := output.Renderer{Stdout: a.streams.out, IsTTY: a.streams.isTTY}
 	return renderer.Render(output.Dataset{

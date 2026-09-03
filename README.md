@@ -45,6 +45,8 @@ osp-release release latest --jira-email 'pass::jira/email' --jira-token 'pass::j
 
 `upstream` commands use normal GitHub CLI auth conventions through the official `go-gh` library.
 
+`support` commands read the public Red Hat product life cycle API and need no credentials.
+
 ## Component Catalog
 
 The component catalog lives in `internal/release/components.yaml` and is embedded into the binary at build time.
@@ -115,18 +117,54 @@ osp-release component list
 osp-release component show pac
 osp-release upstream list
 osp-release upstream show pac --field version --quiet
+osp-release support list
+osp-release support list --all
+osp-release support show 1.21
 ```
+
+## Support Status
+
+`osp-release support` reports the Red Hat product life cycle state of each OSP
+minor, sourced from the public product life cycle API. It needs no credentials.
+
+Fields:
+
+| Field | Meaning |
+|---|---|
+| `minor` | OSP minor version |
+| `support_status` | `Full Support`, `Maintenance Support`, or `End of life` |
+| `ga_date` | General availability date |
+| `full_support_end` | End of full support |
+| `eol_date` | End of maintenance support |
+
+By default only versions that are still supported are listed. Use `--all` to
+include end-of-life versions.
+
+```bash
+osp-release support list
+osp-release support list --all
+osp-release support show 1.21
+osp-release support show 1.21 --field eol_date --quiet
+```
+
+`support show` resolves any version, including end-of-life ones.
+
+`release` commands show `support_status` alongside the release data. The date
+fields are available there too via `--field`. If the life cycle API is
+unreachable, `release` commands still work and leave the support fields empty.
 
 ## Caching
 
-`release` and `component` commands cache Jira/Confluence data for 7 days under
-`$XDG_CACHE_HOME/osp-release/` (macOS: `~/Library/Caches/osp-release/`).
+`release`, `component`, and `support` commands cache Jira/Confluence and life
+cycle data for 7 days under `$XDG_CACHE_HOME/osp-release/`
+(macOS: `~/Library/Caches/osp-release/`).
 
 To bypass the cache and fetch live data:
 
 ```bash
 osp-release release list --refresh
 osp-release component show pac --refresh
+osp-release support list --refresh
 ```
 
 ## Output
@@ -134,8 +172,9 @@ osp-release component show pac --refresh
 - Default on TTY: table
 - Default when piped or redirected: JSON
 - Override with `--output table|text|json`
-- Release commands include component versions by default
+- Release commands include component versions and `support_status` by default
 - Release listings hide unreleased versions unless `--unreleased` is passed
+- `support list` hides end-of-life versions unless `--all` is passed
 - Use `--field` to select stable fields
 - Use `--no-components` to hide component versions in release output
 - Use `--quiet` with a single `--field` for bare values
@@ -149,7 +188,9 @@ osp-release release show 1.21
 osp-release release latest --no-components
 osp-release release list --unreleased
 osp-release release list --field minor --field version --output text
+osp-release release show 1.21 --field eol_date --quiet
 osp-release upstream list --json
+osp-release support list --json
 ```
 
 ## Development

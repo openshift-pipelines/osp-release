@@ -7,6 +7,10 @@ display_names:
   repo: Repository
   name: Component
   minimum_k8s_version: Minimum Kubernetes
+  support_status: Support
+  ga_date: GA
+  full_support_end: Full Support Ends
+  eol_date: EOL
 
 components:
   - key: pac
