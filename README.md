@@ -267,5 +267,3 @@ make release-snapshot
 CI runs tests, lint, and `goreleaser check`. Tags publish release archives, Homebrew casks, and Linux packages with GoReleaser.
 
 The Homebrew cask is published directly to `homebrew/Casks/` in this repository using the workflow's `GITHUB_TOKEN`.
-# test Thu  3 Sep 11:52:03 CEST 2026
-# test Thu  3 Sep 11:52:17 CEST 2026
